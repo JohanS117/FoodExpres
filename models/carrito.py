@@ -12,18 +12,18 @@ class Carrito:
     def agregar(cliente_id, producto_id, cantidad):
         """Agrega un producto al carrito"""
         # ERROR 1: No valida que cantidad sea positiva
-        if cantidad <= 0:
-            return False
-        conexion = conectar_bd()
-        if not conexion:
-            return False
-        cursor = conexion.cursor()
-        
-        cursor.execute("""
-            SELECT id, cantidad FROM carrito 
-            WHERE cliente_id = %s AND producto_id = %s
-        """, (cliente_id, producto_id))
-        existente = cursor.fetchone()
+    if not isinstance(cantidad, int) or cantidad <= 0:
+        return False
+    conexion = conectar_bd()
+    if not conexion:
+        return False
+    cursor = conexion.cursor()
+    
+    cursor.execute("""
+        SELECT id, cantidad FROM carrito 
+        WHERE cliente_id = %s AND producto_id = %s
+    """, (cliente_id, producto_id))
+    existente = cursor.fetchone()
         
         try:
             if existente:
