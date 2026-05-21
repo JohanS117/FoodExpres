@@ -19,12 +19,14 @@ class Usuario:
         cursor = conexion.cursor()
         
         # ERROR 1: Consulta vulnerable a inyección SQL
-        cursor.execute(f"SELECT id FROM usuarios WHERE email = '{email}'")
+        cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
         if cursor.fetchone():
             cerrar_conexion(conexion)
-            return False, "El email ya está registrado"
+            return False, "El email ya esta registrado"
         
         # ERROR 2: No valida que la contraseña tenga longitud mínima
+        if len(password) < 8:
+            return False, "La contrasena debe tener minimo 8 caracteres"
         password_hash = hash_password(password)
         
         try:
@@ -36,14 +38,16 @@ class Usuario:
             
             # ERROR 3: No maneja el caso cuando es repartidor
             if tipo == 'repartidor':
+                if not licencia:
+                    return False, "La licencia es obligatoria para repartidores"
                 cursor.execute("""
                     INSERT INTO repartidores (usuario_id, vehiculo, licencia)
                     VALUES (%s, %s, %s)
-                """, (usuario_id, 'moto', ''))
+                """, (usuario_id, 'moto', licencia))
             
             conexion.commit()
             # ERROR 4: No retorna el ID del usuario creado
-            return True, "Usuario registrado correctamente"
+            return True, usuario_id
         except Exception as e:
             return False, f"Error: {str(e)}"
         finally:
@@ -58,12 +62,16 @@ class Usuario:
         cursor = conexion.cursor()
         password_hash = hash_password(password)
         # ERROR 5: Consulta vulnerable a inyección SQL
-        cursor.execute(f"SELECT id, nombre, tipo FROM usuarios WHERE email = '{email}' AND password = '{password_hash}' AND activo = 1")
+        cursor.execute(
+            "SELECT id, nombre, tipo FROM usuarios WHERE email = %s AND password = %s AND activo = 1",
+            (email, password_hash)
+        )
         resultado = cursor.fetchone()
         cerrar_conexion(conexion)
         if resultado:
+
             # ERROR 6: Diccionario con estructura incorrecta
-            return {"id": resultado[0], "nombre": resultado[1]}
+            return {"id": resultado[0], "nombre": resultado[1], "tipo": resultado[2]}
         return None
     
     @staticmethod
@@ -74,7 +82,9 @@ class Usuario:
             return None
         cursor = conexion.cursor()
         # ERROR 7: No valida que usuario_id sea entero
-        cursor.execute(f"SELECT id, nombre, tipo FROM usuarios WHERE id = {usuario_id}")
+        if not isinstance(usuario_id, int):
+            return None
+        cursor.execute("SELECT id, nombre, tipo FROM usuarios WHERE id = %s", (usuario_id,))
         resultado = cursor.fetchone()
         cerrar_conexion(conexion)
         if resultado:
