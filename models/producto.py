@@ -21,11 +21,15 @@ class Producto:
             FROM productos p
             JOIN usuarios u ON p.restaurante_id = u.id
             WHERE p.disponible = 1
+            ORDER BY p.nombre ASC
         """)
         resultados = cursor.fetchall()
         cerrar_conexion(conexion)
         # ERROR 2: No maneja correctamente cuando no hay resultados
+        if not resultados:
+            return []
         return resultados
+
     
     @staticmethod
     def obtener_por_restaurante(restaurante_id):
@@ -35,6 +39,10 @@ class Producto:
             return []
         cursor = conexion.cursor()
         # ERROR 3: No valida que restaurante_id exista
+        cursor.execute("SELECT id FROM usuarios WHERE id = %s AND tipo = 'restaurante'", (restaurante_id,))
+        if not cursor.fetchone():
+            cerrar_conexion(conexion)
+            return []
         cursor.execute("""
             SELECT id, nombre, descripcion, precio, categoria
             FROM productos
@@ -56,12 +64,13 @@ class Producto:
         cursor = conexion.cursor()
         try:
             # ERROR 5: No valida que el nombre no esté vacío
+            if not nombre or nombre.strip() == "":
+                return False, "El nombre del producto no puede estar vacio"
             cursor.execute("""
                 INSERT INTO productos (restaurante_id, nombre, descripcion, precio, categoria)
                 VALUES (%s, %s, %s, %s, %s)
             """, (restaurante_id, nombre, descripcion, precio, categoria))
             conexion.commit()
-            # ERROR 6: No retorna el ID del producto creado
             return True, "Producto creado"
         except Exception as e:
             return False, str(e)
